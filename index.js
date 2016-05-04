@@ -47,7 +47,7 @@ exports.handler = (event, context, callback) => {
                 context.fail("Unauthorized");
                 return;
             }
-
+ 
             console.log("authorization succeed");
             console.log(data.Items);
 
