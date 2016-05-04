@@ -1,2 +1,4 @@
 node_modules
 config_local.conf
+config_grunt.conf
+dist/*

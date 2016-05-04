@@ -1,1 +1,44 @@
-grunt run
+■Lambda関数の実行
+　Gruntに、grunt-aws-lambdaを用いた実行コマンドを作成する。
+　　grunt run
+
+
+■DynamoDBのSecondaryIndexにtuuidを設定する
+　ローカルは下記のコード。
+　　AWSの場合はUI上より設定可能
+
+
+
+var params = {
+    TableName: "User",
+    AttributeDefinitions:[
+        {AttributeName: "tuuid", AttributeType: "S"}
+    ],
+    GlobalSecondaryIndexUpdates: [
+        {
+            Create: {
+                IndexName: "TuuidIndex",
+                KeySchema: [
+                    {AttributeName: "tuuid", KeyType: "HASH"},  //Partition key
+                ],
+                Projection: {
+                    "ProjectionType": "ALL"
+                },
+                ProvisionedThroughput: {
+                    "ReadCapacityUnits": 1,"WriteCapacityUnits": 1
+                }
+            }
+        }
+    ]
+};
+
+dynamodb.updateTable(params, function(err, data) {
+    if (err)
+        console.log(JSON.stringify(err, null, 2));
+    else
+        console.log(JSON.stringify(data, null, 2));
+});
+
+■Deploy
+
+

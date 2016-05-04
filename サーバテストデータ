@@ -1,0 +1,6 @@
+
+{
+ "type": "TOKEN",
+ "authorizationToken": "{\"user_id\":\"64f3fb36-7a9b-4156-a584-bd9a86d0ddfa\",\"temporal_random\":\"1462344320837\",\"mac\":\"cabf31cf30213b3bf172d89e8a4948ca5f762b02ddaef8c8cd71cfe6951791c0\"}",
+ "methodArn": "arn:aws:execute-api:us-east-1:494806557253:zolduiowmi/2/GET/userinfo-update"
+}

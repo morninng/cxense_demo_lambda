@@ -1,15 +1,10 @@
 'use strict';
 console.log('Loading function');
 
-var config = require('./config_local.conf');
-//var config = require('./config_aws.conf');
+//var config = require('./config_local.conf');
+var config = require('./config_aws.conf');
 var AWS = require("aws-sdk");
 var crypto = require("crypto");
-
-if(config.local){
-    AWS.config.update({accessKeyId: config.AwsKeyId, secretAccessKey: config.SecretKey});
-}
-
 AWS.config.update({
   region: config.dynamo_region,
   endpoint: config.dynamo_url
@@ -22,13 +17,13 @@ var docClient = new AWS.DynamoDB.DocumentClient();
 
 exports.handler = (event, context, callback) => {
     
+    console.log(event);
     var token_str = event.authorizationToken;
     var token_obj = JSON.parse(token_str);
-    console.log(token_obj);
     var in_tuuid = token_obj.user_id;
     console.log("user id is", in_tuuid);
     var in_mac = token_obj.mac;
-    console.log(in_mac);
+    console.log("mac value is" + in_mac);
 
 
     var params = {
@@ -43,10 +38,19 @@ exports.handler = (event, context, callback) => {
 
     docClient.query(params, function(err, data) {
         if (err){
-            context.fail("Unauthorized");
+            console.log("database connection error");
             console.log(JSON.stringify(err, null, 2));
-        }
-        else{
+            context.fail("Unauthorized");
+        }else{
+            if(!data.Items[0]){
+                console.log("cannot find user");
+                context.fail("Unauthorized");
+                return;
+            }
+
+            console.log("authorization succeed");
+            console.log(data.Items);
+
             var db_tuuid = data.Items[0].tuuid;
             var db_email = data.Items[0].email;
             var db_temporal_random = data.Items[0].temporal_random;
@@ -59,8 +63,12 @@ exports.handler = (event, context, callback) => {
             if(db_mac == in_mac){
                 context.succeed(generatePolicy('user', 'Allow', event.methodArn));
             }else{
+                console.log(db_mac);
+                console.log(in_mac);
+                console.log(db_hashed_password);
+                console.log(db_email);
+                console.log(db_tuuid);
                 context.fail("unauthorized");
-
             }
         }
     });
