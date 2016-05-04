@@ -17,12 +17,7 @@ module.exports = function (grunt) {
 	            }
 	        }
 	    },
-
-
-
 	});
-
-
 
 	grunt.registerTask('run',['lambda_invoke']);
 

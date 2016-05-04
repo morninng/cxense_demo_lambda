@@ -1,48 +1,71 @@
 'use strict';
 console.log('Loading function');
 
+var config = require('./config_local.conf');
+//var config = require('./config_aws.conf');
+var AWS = require("aws-sdk");
+var crypto = require("crypto");
+
+if(config.local){
+    AWS.config.update({accessKeyId: config.AwsKeyId, secretAccessKey: config.SecretKey});
+}
+
+AWS.config.update({
+  region: config.dynamo_region,
+  endpoint: config.dynamo_url
+});
+
+
+var aws_client = new AWS.DynamoDB();
+var docClient = new AWS.DynamoDB.DocumentClient();
+
+
 exports.handler = (event, context, callback) => {
     
-    console.log(event);
     var token_str = event.authorizationToken;
-    console.log(token_str);
     var token_obj = JSON.parse(token_str);
     console.log(token_obj);
-    var user_id = token_obj.user_id;
-    console.log("user id is", user_id);
-    var temporal_random = token_obj.temporal_rndom;
-    var mac = token_obj.mac;
-    if(user_id == '57ee794c-ad70-4849-8cdf-3e2e006cf78d'){
-        context.succeed(generatePolicy('user', 'Allow', event.methodArn));
-    }else{
-        context.fail("Unauthorized");
-    }
-    
-    
-    /*
-    
-    console.log("token is" + token);
-    // Call oauth provider, crack jwt token, etc.
-    // In this example, the token is treated as the status for simplicity.
-    switch (token) {
-    case 'allow':
-        console.log("allowed");
-        context.succeed(generatePolicy('user', 'Allow', event.methodArn));
-    break;
-    case 'deny':
-        console.log("denied");
-        context.succeed(generatePolicy('user', 'Deny', event.methodArn));
-    break;
-    case 'unauthorized':
-        console.log("unaurhtorized");
-        context.fail("Unauthorized");
-    break;
-    default:
-        console.log("error");
-        context.fail("error");
-    }
-    */
+    var in_tuuid = token_obj.user_id;
+    console.log("user id is", in_tuuid);
+    var in_mac = token_obj.mac;
+    console.log(in_mac);
+
+
+    var params = {
+        TableName: "User",
+        IndexName: "TuuidIndex",
+        KeyConditionExpression: "tuuid = :tuuid_value",
+        ExpressionAttributeValues: {
+            ":tuuid_value": in_tuuid
+        }        ,
+        ProjectionExpression: "tuuid, temporal_random, email, hashed_password"
+    };
+
+    docClient.query(params, function(err, data) {
+        if (err){
+            context.fail("Unauthorized");
+            console.log(JSON.stringify(err, null, 2));
+        }
+        else{
+            var db_tuuid = data.Items[0].tuuid;
+            var db_email = data.Items[0].email;
+            var db_temporal_random = data.Items[0].temporal_random;
+            var db_hashed_password = data.Items[0].hashed_password;
+            
+            var message = db_email + String(db_temporal_random);
+            var hmac_sha256 = crypto.createHash('sha256', db_hashed_password);
+            var db_mac = hmac_sha256.update(message).digest('hex');
+
+            if(db_mac == in_mac){
+                context.succeed(generatePolicy('user', 'Allow', event.methodArn));
+            }else{
+                context.fail("unauthorized");
+
+            }
+        }
+    });
 };
+
 
 
     var generatePolicy = function(principalId, effect, resource) {
