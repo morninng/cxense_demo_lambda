@@ -16,10 +16,12 @@ var docClient = new AWS.DynamoDB.DocumentClient();
 
 
 exports.handler = (event, context, callback) => {
-    
+    console.log("------lambda function of authorization start 4------")
     console.log(event);
     var token_str = event.authorizationToken;
+    console.log(token_str);
     var token_obj = JSON.parse(token_str);
+    console.log(token_obj);
     var in_tuuid = token_obj.user_id;
     console.log("user id is", in_tuuid);
     var in_mac = token_obj.mac;
@@ -38,17 +40,16 @@ exports.handler = (event, context, callback) => {
 
     docClient.query(params, function(err, data) {
         if (err){
-            console.log("database connection error");
+            console.log("error: database connection fail");
             console.log(JSON.stringify(err, null, 2));
             context.fail("Unauthorized");
         }else{
             if(!data.Items[0]){
-                console.log("cannot find user");
+                console.log("error: cannot find user");
                 context.fail("Unauthorized");
                 return;
             }
  
-            console.log("authorization succeed");
             console.log(data.Items);
 
             var db_tuuid = data.Items[0].tuuid;
@@ -61,8 +62,10 @@ exports.handler = (event, context, callback) => {
             var db_mac = hmac_sha256.update(message).digest('hex');
 
             if(db_mac == in_mac){
-                context.succeed(generatePolicy('user', 'Allow', event.methodArn));
+                console.log("authorization succeed");
+                context.succeed(generatePolicy(db_tuuid, 'Allow', event.methodArn));
             }else{
+                console.log("authorization fail because mac value does not match")
                 console.log(db_mac);
                 console.log(in_mac);
                 console.log(db_hashed_password);

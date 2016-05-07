@@ -1,0 +1,98 @@
+
+
+http://dev.classmethod.jp/cloud/aws/amazon-api-gateway-cors/
+
+■■■API GatewayにおけるCustomAuthorization■■■
+
+API　Gatewayにおいて、CustomAuthorizationqを実行する方法。
+ブラウザにおいて次のようにTokenを送信し、
+TokenをLambdaのAuth関数に受け渡しを行うことで認証するまでの流れ。
+
+$.ajax({
+  url: 'https://ayezw7de4c.execute-api.us-east-1.amazonaws.com/dd/',
+  method: 'GET',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization':'TokeToken'
+  }
+
+■TokenをLambdaに受け渡す方法
+　
+　API Gatewayにおいて、CustomAuthorizersを選択してCreate。
+ 実行するLambda関数を指定したうえで、Identity token source　に、LambdaがうけとるTokenを設定する。
+ 例：method.request.header.TokeToken
+　
+■Methodごとでの、Authorizationの設定
+
+　（１）各メソッドのMethodRequestを選択
+　（２）AuthorizationSettingにおいて、利用するAuthのLambda関数を選択
+　
+　
+　
+
+■LambdaでのTokenの利用
+
+上記のIdentity token source　に設定したTokenは、
+次のような形で取得できる。
+exports.handler = (event, context, callback) => {
+    var token = event.authorizationToken;
+
+この形でtokenを用いて認証のロジックを作成する。
+認証作成時
+ context.succeed(authResponse);
+認証時
+　context.fail("unauthorized");
+
+
+■■ CORの設定■
+
+　API Gatewayにおけるリソースにつきそれぞれ、CORをEnableする。
+　 →UI上で変更しても、Deployを明示的にしないといけない！
+
+
+
+■■■Option MethodにおけるAccessControlについて■■■
+
+Option Methodでかえす、AccessControlAllowHeaderの値にないものを
+次のGetMethodにおけるHeaderで指定するとエラーとなる。
+　
+＜エラーメッセージ＞
+XMLHttpRequest cannot load https://ayezw7de4c.execute-api.us-east-1.amazonaws.com/dd/. Request header field XXXXX is not allowed by Access-Control-Allow-Headers in preflight response.
+
+
+次のようなコードがあったとき、headerに指定している、Content-typeとXXXXXXは、
+Optionメソッドにおいて、指定されている必要がある。
+
+$.ajax({
+  url: 'https://ayezw7de4c.execute-api.us-east-1.amazonaws.com/dd/',
+  method: 'GET',
+  headers: {
+    'Content-Type': 'application/json',
+    'XXXXXXX':'AAAAAA'
+  }
+}).done(function(data) {
+    console.log(data);
+}).fail(function(data){
+	console.log(data);
+});
+
+OptionMethodにおいてのHeaderを許容する指定は次のようになる。
+
+■OptionMethodのAccessControlAllowHeaderに値を設定する方法
+
+　APIGatewayのOptionMethodにおけるIntegrationResaponseを選択
+　ステータスコードを選択し、HeaderMappingを選択する。
+　　Access-Control-Allow-Headersにおいて、許容する文字列を記載する、
+　　　→Access-Control-Allow-Headers:Content-Type,X-Amz-Date,XXXXXXX,X-Api-Key,X-Amz-Security-Token
+　　　　というような指定になる。
+
+■レスポンスの確認
+
+Access-Control-Allow-Headers:Content-Type,X-Amz-Date,XXXXXXX,X-Api-Key,X-Amz-Security-Token
+Access-Control-Allow-Methods:GET,OPTIONS
+Access-Control-Allow-Origin:*
+
+上記のように、前項で設定したXXXXXXXが、Access-Control-Allow-Headersに含まれていることが確認できる。
+
+
+
